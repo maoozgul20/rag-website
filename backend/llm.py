@@ -22,6 +22,7 @@ FORMAT_INSTRUCTIONS = (
     "- Use **bold** for key terms and `inline code` for names of functions, libraries and values.\n"
     "- Put any code in fenced code blocks with a language tag, e.g. ```python.\n"
     "- Use a small table only when comparing things side by side.\n"
+    "- Write math with $...$ inline or $$...$$ on its own line (LaTeX inside).\n"
     "- Use ### headings only for longer answers with several parts.\n"
     "- If you cite sources, list them at the end under a line **Sources:** as bullets.\n"
     "Keep it concise and easy to scan. Do not wrap the whole answer in a code block."

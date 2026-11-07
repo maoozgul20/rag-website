@@ -1,143 +1,210 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import Controls from '../components/Controls.jsx'
 import HitList from '../components/HitList.jsx'
 import Markdown from '../components/Markdown.jsx'
-import { Search, Sparkle, Info } from '../components/Icons.jsx'
+import { ArrowUp, Sliders, BookOpen, Scale, Code, Chevron } from '../components/Icons.jsx'
 
 const EXAMPLES = [
-  'What is precision?',
-  'What is the difference between classification and regression?',
-  'How do I handle missing values in pandas?',
-  'What is LangChain?',
+  { q: 'What is precision?', hint: 'Evaluation metrics' },
+  { q: 'What is the difference between classification and regression?', hint: 'Machine learning basics' },
+  { q: 'How do I handle missing values in pandas?', hint: 'Data handling' },
+  { q: 'What is LangChain?', hint: 'Honest test: not in the notes' },
 ]
 
+const prettySource = (s) => s.replace(/^\d+_/, '').replace(/\.\w+$/, '').replace(/_/g, ' ')
+
+// One chip per source file, listing the ranks of its passages
+function groupSources(hits) {
+  const groups = new Map()
+  for (const h of hits) groups.set(h.source, [...(groups.get(h.source) || []), h.rank])
+  return [...groups]
+}
+
 export default function AskPage({ health }) {
-  const [question, setQuestion] = useState('What is precision?')
+  const [messages, setMessages] = useState([])
+  const [draft, setDraft] = useState('')
   const [k, setK] = useState(3)
   const [mode, setMode] = useState('semantic')
   const [compare, setCompare] = useState(true)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [result, setResult] = useState(null)
-  const [showPrompt, setShowPrompt] = useState(false)
+  const [showOptions, setShowOptions] = useState(false)
+  const endRef = useRef(null)
+  const inputRef = useRef(null)
 
   const llmReady = health?.llm_configured
+  const busy = messages.some((m) => m.loading)
 
-  async function submit(e) {
-    e?.preventDefault()
-    if (!question.trim()) return
-    setLoading(true); setError(null); setResult(null); setShowPrompt(false)
+  useEffect(() => {
+    if (messages.length) endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [messages])
+
+  // Grow the message box with its content
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`
+  }, [draft])
+
+  async function ask(text) {
+    const question = text.trim()
+    if (!question || busy || !llmReady) return
+    const id = Date.now()
+    setDraft('')
+    setShowOptions(false)
+    setMessages((m) => [...m, { id, question, loading: true, k }])
+    let patch
     try {
-      setResult(await api.ask({ question, k, mode, compare }))
+      patch = { result: await api.ask({ question, k, mode, compare }) }
     } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+      patch = { error: err.message }
+    }
+    setMessages((m) => m.map((msg) => (msg.id === id ? { ...msg, ...patch, loading: false } : msg)))
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault()
+      ask(draft)
     }
   }
 
   return (
-    <section>
-      <div className="card search-card">
-        <form onSubmit={submit}>
-          <label className="sr-only" htmlFor="q">Your question</label>
-          <div className="searchbox">
-            <Search size={22} className="search-icon" />
-            <input id="q" value={question} maxLength={500} autoComplete="off"
-              onChange={(e) => setQuestion(e.target.value)} placeholder="Ask about your course notes" />
-            <button className={loading ? 'btn primary busy' : 'btn primary'} disabled={loading || !llmReady}>
-              {loading ? <><span className="spinner" /> Searching</> : <><Sparkle size={17} /> Ask</>}
-            </button>
+    <div className="chat">
+      <div className="thread">
+        {messages.length === 0 ? (
+          <div className="welcome">
+            <span className="welcome-mark" aria-hidden="true">n</span>
+            <h1>What do you want to know?</h1>
+            <p>Answers come from your Week 1–8 course notes, with the exact passages they used.</p>
+            <div className="starters">
+              {EXAMPLES.map((ex) => (
+                <button key={ex.q} className="starter" disabled={!llmReady} onClick={() => ask(ex.q)}>
+                  <span className="starter-q">{ex.q}</span>
+                  <span className="starter-hint">{ex.hint}</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="examples">
-            <span className="examples-label">Try</span>
-            {EXAMPLES.map((ex) => (
-              <button type="button" key={ex} className={question === ex ? 'chip on' : 'chip'}
-                onClick={() => setQuestion(ex)}>{ex}</button>
-            ))}
-          </div>
-          <div className="options">
+        ) : (
+          messages.map((m) => <Exchange key={m.id} msg={m} threshold={health?.low_score_threshold} />)
+        )}
+        <div ref={endRef} />
+      </div>
+
+      <div className="composer-wrap">
+        {!llmReady && health && (
+          <p className="note warn">Answers are off because no LLM_API_KEY is set. Add a free key from console.groq.com to .env or to your Vercel settings. The Retrieval lab still works.</p>
+        )}
+        {showOptions && (
+          <div className="options-pop" role="dialog" aria-label="Answer options">
             <Controls k={k} setK={setK} mode={mode} setMode={setMode} />
             <label className="check">
               <input type="checkbox" checked={compare} onChange={(e) => setCompare(e.target.checked)} />
               <span className="check-box" aria-hidden="true" />
-              <span>Also answer <b>without</b> your notes, to compare (Step 6)</span>
-              <span className="info" title="Runs a second answer with no retrieved notes, at the same time, so you can see what retrieval adds."><Info size={17} /></span>
+              <span>Also answer <b>without</b> the notes, to compare (Step 6)</span>
             </label>
           </div>
-        </form>
-        {!llmReady && health && (
-          <p className="note warn">Answers are off because no LLM_API_KEY is set. Add a free key from console.groq.com to .env or to your Vercel settings. The Retrieval lab still works.</p>
         )}
-        {error && <p className="note bad">{error}</p>}
-      </div>
-
-      {loading && <Working k={k} />}
-
-      {result && (
-        <div className="results">
-          <Confidence top={result.top_score} low={result.low_confidence} threshold={health?.low_score_threshold} />
-
-          <div className={result.answer_without_rag != null ? 'answers two' : 'answers'}>
-            <article className="card answer rag">
-              <div className="answer-head">
-                <h3><span className="tag accent">With your notes</span></h3>
-                <span className="muted small">{result.seconds.with_rag}s</span>
-              </div>
-              <div className="answer-text"><Markdown>{result.answer_with_rag}</Markdown></div>
-            </article>
-            {result.answer_without_rag != null && (
-              <article className="card answer plain">
-                <div className="answer-head">
-                  <h3><span className="tag">Model only</span></h3>
-                  <span className="muted small">{result.seconds.without_rag}s</span>
-                </div>
-                <div className="answer-text"><Markdown>{result.answer_without_rag}</Markdown></div>
-              </article>
-            )}
+        <form className="composer" onSubmit={(e) => { e.preventDefault(); ask(draft) }}>
+          <label className="sr-only" htmlFor="q">Your question</label>
+          <textarea id="q" ref={inputRef} rows={1} value={draft} maxLength={500}
+            placeholder="Ask about your course notes…" onChange={(e) => setDraft(e.target.value)} onKeyDown={onKeyDown} />
+          <div className="composer-bar">
+            <button type="button" className={showOptions ? 'pill-btn on' : 'pill-btn'}
+              onClick={() => setShowOptions(!showOptions)} aria-expanded={showOptions}>
+              <Sliders size={16} /> <span>Top-k {k} · {mode === 'semantic' ? 'Semantic' : 'Hybrid'}{compare ? ' · Compare' : ''}</span>
+            </button>
+            <button className="send" disabled={!draft.trim() || busy || !llmReady} aria-label="Send question">
+              {busy ? <span className="spinner" /> : <ArrowUp size={19} />}
+            </button>
           </div>
+        </form>
+        <p className="composer-hint">Enter to send · Shift + Enter for a new line</p>
+      </div>
+    </div>
+  )
+}
 
-          <div className="card sources">
-            <div className="row-between">
-              <h3>Passages it used <span className="muted h-note">from your notes, best match first</span></h3>
-              <button className="btn ghost" onClick={() => setShowPrompt(!showPrompt)} aria-expanded={showPrompt}>
-                {showPrompt ? 'Hide full prompt' : 'Show full prompt'}
-              </button>
+function Exchange({ msg, threshold = 0.4 }) {
+  const [panel, setPanel] = useState(null)
+  const r = msg.result
+  const toggle = (name) => setPanel(panel === name ? null : name)
+
+  return (
+    <div className="exchange">
+      <div className="user-msg"><p>{msg.question}</p></div>
+
+      <div className="bot-msg">
+        <span className="bot-avatar" aria-hidden="true">n</span>
+        <div className="bot-body">
+          {msg.loading && (
+            <div className="thinking" role="status">
+              <span className="dots" aria-hidden="true"><i /><i /><i /></span>
+              Reading the {msg.k} closest passages…
             </div>
-            {showPrompt && <pre className="prompt">{result.prompt}</pre>}
-            <HitList hits={result.hits} />
-          </div>
+          )}
+
+          {msg.error && <p className="note bad">{msg.error}</p>}
+
+          {r && (
+            <>
+              <div className="meta">
+                <span className={r.low_confidence ? 'badge low' : 'badge high'}
+                  title={r.low_confidence
+                    ? `Best passage scored below ${threshold}, so the notes probably do not cover this.`
+                    : `Best passage scored above ${threshold}.`}>
+                  {r.low_confidence ? 'Weak match' : 'Strong match'} · {r.top_score.toFixed(2)}
+                </span>
+                <span className="meta-time">{r.seconds.with_rag}s</span>
+              </div>
+
+              <Markdown>{r.answer_with_rag}</Markdown>
+
+              <div className="source-chips">
+                {groupSources(r.hits).map(([source, ranks]) => (
+                  <button key={source} className="source-chip" onClick={() => setPanel('sources')} title={source}>
+                    {ranks.map((n) => <b key={n}>{n}</b>)} {prettySource(source)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="tools">
+                <ToolBtn on={panel === 'sources'} onClick={() => toggle('sources')} Icon={BookOpen}>
+                  Passages ({r.hits.length})
+                </ToolBtn>
+                {r.answer_without_rag != null && (
+                  <ToolBtn on={panel === 'compare'} onClick={() => toggle('compare')} Icon={Scale}>
+                    Compare with model only
+                  </ToolBtn>
+                )}
+                <ToolBtn on={panel === 'prompt'} onClick={() => toggle('prompt')} Icon={Code}>
+                  Prompt
+                </ToolBtn>
+              </div>
+
+              {panel === 'sources' && <div className="panel"><HitList hits={r.hits} /></div>}
+              {panel === 'compare' && (
+                <div className="panel compare">
+                  <div className="panel-head">
+                    <span>Model only, no notes</span><span className="meta-time">{r.seconds.without_rag}s</span>
+                  </div>
+                  <Markdown>{r.answer_without_rag}</Markdown>
+                </div>
+              )}
+              {panel === 'prompt' && <pre className="panel prompt">{r.prompt}</pre>}
+            </>
+          )}
         </div>
-      )}
-    </section>
-  )
-}
-
-// Shown while waiting: lines on a page being highlighted one after another
-function Working({ k }) {
-  return (
-    <div className="card working" role="status">
-      <div className="working-lines" aria-hidden="true">
-        {Array.from({ length: Math.min(k, 5) }, (_, i) => (
-          <span key={i} style={{ '--i': i }} />
-        ))}
       </div>
-      <p>Finding the {k} closest passages and writing the answer…</p>
     </div>
   )
 }
 
-function Confidence({ top, low, threshold = 0.4 }) {
+function ToolBtn({ on, onClick, Icon, children }) {
   return (
-    <div className={low ? 'confidence low' : 'confidence high'}>
-      <span className="confidence-score">{top.toFixed(2)}</span>
-      <span>
-        <b>{low ? 'Your notes probably do not cover this.' : 'Your notes cover this question.'}</b>{' '}
-        {low
-          ? `The best passage scored below ${threshold}, so a grounded answer should say "I do not know".`
-          : `The best passage scored above ${threshold}.`}
-      </span>
-    </div>
+    <button type="button" className={on ? 'tool on' : 'tool'} onClick={onClick} aria-expanded={on}>
+      <Icon size={15} /> {children} <Chevron size={14} className="tool-chev" />
+    </button>
   )
 }
