@@ -1,0 +1,6 @@
+# Extra packages for running locally and for the tests (not needed on Vercel)
+-r requirements.txt
+uvicorn>=0.30
+pytest>=8
+httpx>=0.27
+scikit-learn>=1.4

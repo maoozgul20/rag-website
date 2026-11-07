@@ -1,0 +1,8 @@
+# Backend packages. Vercel installs these for the api/ function.
+# No PyTorch: ONNX Runtime runs the same embedding model in ~1/10 of the size.
+fastapi>=0.115
+pydantic>=2.7
+numpy>=1.26
+faiss-cpu>=1.8
+onnxruntime>=1.18
+tokenizers>=0.19

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.vercel/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+backend/.cache/
+.env
+# backend/index/ is NOT ignored: commit it so Vercel loads it instantly
