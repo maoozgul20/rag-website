@@ -13,15 +13,35 @@ class LLMError(Exception):
     pass
 
 
+# Sent as the system message so every answer comes back as clean Markdown,
+# which the frontend renders (headings, lists, bold, code, tables).
+FORMAT_INSTRUCTIONS = (
+    "You are a helpful tutor. Format every answer in clean GitHub-flavored Markdown:\n"
+    "- Start with a direct one or two sentence answer.\n"
+    "- Then explain with short paragraphs or bullet points; use numbered lists for steps.\n"
+    "- Use **bold** for key terms and `inline code` for names of functions, libraries and values.\n"
+    "- Put any code in fenced code blocks with a language tag, e.g. ```python.\n"
+    "- Use a small table only when comparing things side by side.\n"
+    "- Use ### headings only for longer answers with several parts.\n"
+    "- If you cite sources, list them at the end under a line **Sources:** as bullets.\n"
+    "Keep it concise and easy to scan. Do not wrap the whole answer in a code block."
+)
+
+
 class ApiLLM:
-    def __init__(self, api_key, base_url, model, max_tokens=300, temperature=0.2):
+    def __init__(self, api_key, base_url, model, max_tokens=800, temperature=0.2,
+                 system_prompt=FORMAT_INSTRUCTIONS):
         self.api_key, self.base_url, self.model = api_key, base_url, model
         self.max_tokens, self.temperature = max_tokens, temperature
+        self.system_prompt = system_prompt
 
     def ask(self, prompt):
+        messages = [{"role": "user", "content": prompt}]
+        if self.system_prompt:
+            messages.insert(0, {"role": "system", "content": self.system_prompt})
         body = json.dumps({
             "model": self.model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
         }).encode()

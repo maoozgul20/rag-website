@@ -46,7 +46,7 @@ EMBED_DIM = 384
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
 LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
-MAX_TOKENS = int(os.getenv("MAX_TOKENS", 300))
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", 800))
 TEMPERATURE = float(os.getenv("TEMPERATURE", 0.2))
 
 # Honest test (Step 7)
