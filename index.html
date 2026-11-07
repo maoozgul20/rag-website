@@ -6,11 +6,15 @@
     <title>Course Notes RAG</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <meta name="theme-color" content="#f6f8fc" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <meta name="theme-color" content="#f7f5f0" />
     <script>
-      // Apply the saved theme before first paint (light by default)
-      try { document.documentElement.dataset.theme = localStorage.getItem('theme-v2') || 'light' } catch (e) { document.documentElement.dataset.theme = 'light' }
+      // Apply the saved theme (or the system theme) before first paint
+      try {
+        var t = localStorage.getItem('theme-v3')
+        if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        document.documentElement.dataset.theme = t
+      } catch (e) { document.documentElement.dataset.theme = 'light' }
     </script>
   </head>
   <body>
