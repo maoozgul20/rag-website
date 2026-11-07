@@ -12,10 +12,10 @@ import os
 import time
 from pathlib import Path
 
-import faiss
 import numpy as np
 
 from .chunker import recursive_chunk
+from .flatindex import FlatIPIndex, normalize_l2
 from .tfidf import TfidfIndex
 
 
@@ -62,7 +62,7 @@ class RAGPipeline:
             return False
         if json.loads(meta.read_text()).get("fingerprint") != fp:
             return False
-        self.index = faiss.read_index(str(folder / "rag.index"))
+        self.index = FlatIPIndex.read(folder / "rag.index")
         self.tfidf = TfidfIndex.load(folder / "tfidf.npz")
         return self.index.ntotal == len(self.chunks)
 
@@ -80,8 +80,8 @@ class RAGPipeline:
                 return self.build_info
 
         vectors = self.embed_fn(self.chunks)
-        faiss.normalize_L2(vectors)                 # length 1 -> inner product = cosine
-        self.index = faiss.IndexFlatIP(self.dim)
+        normalize_l2(vectors)                       # length 1 -> inner product = cosine
+        self.index = FlatIPIndex(self.dim)          # same as faiss.IndexFlatIP
         self.index.add(vectors)
         self.tfidf = TfidfIndex.fit(self.chunks)
         saved_to = self.save(fp)
@@ -97,7 +97,7 @@ class RAGPipeline:
                 folder.mkdir(parents=True, exist_ok=True)
                 if not os.access(folder, os.W_OK):
                     continue
-                faiss.write_index(self.index, str(folder / "rag.index"))
+                self.index.write(folder / "rag.index")      # FAISS file format
                 self.tfidf.save(folder / "tfidf.npz")
                 (folder / "meta.json").write_text(json.dumps({
                     "fingerprint": fp, "chunks": len(self.chunks),
@@ -122,14 +122,13 @@ class RAGPipeline:
                 "examples": self.chunks[:2]}
 
     def index_stats(self):
-        return {"type": "IndexFlatIP (Flat, exact search)", "dimension": self.index.d,
+        return {"type": "IndexFlatIP (Flat, exact search; FAISS file, NumPy search)",
+                "dimension": self.index.d,
                 "vectors": self.index.ntotal, **self.build_info}
 
     # ---------- Step 4a ----------
     def _query_vector(self, question):
-        q = self.embed_fn([question])
-        faiss.normalize_L2(q)
-        return q
+        return normalize_l2(self.embed_fn([question]))
 
     def retrieve(self, question, k=5):
         k = max(1, min(k, self.index.ntotal))

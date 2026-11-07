@@ -8,7 +8,7 @@ No paid server, no GPU.
 |---|---|
 | 0b Load corpus, 1 Chunk | Same code, `backend/chunker.py` (unchanged) |
 | 2 Embed (all-MiniLM-L6-v2) | **Same model**, run with ONNX Runtime instead of PyTorch |
-| 3 FAISS IndexFlatIP, save/load | **Same**, built once by `build_index.py`, loaded by the site |
+| 3 FAISS IndexFlatIP, save/load | **Same index file**, built once by `build_index.py`; on Vercel it is searched with NumPy (identical results) |
 | 4 Retrieve top-k, 4c fact check | Retrieval lab page |
 | 5 Augmented prompt | Same prompt text; "Show full prompt" button |
 | 6 Generate with and without RAG | **Groq API** (Llama 3.1 8B), both answers in parallel |
@@ -17,9 +17,13 @@ No paid server, no GPU.
 
 ## Why it is fast on free Vercel
 
-1. **No PyTorch.** PyTorch is too big for a free Vercel function. ONNX Runtime
-   runs the exact same MiniLM model at about a tenth of the size. The whole
-   function is about 230 MB, which fits under Vercel's limit.
+1. **No PyTorch, no FAISS library on Vercel.** Vercel's function limit is 225 MB.
+   ONNX Runtime runs the exact same MiniLM model at about a tenth of PyTorch's
+   size. The FAISS library (about 65 MB) is replaced on Vercel by
+   `backend/flatindex.py`, which reads the same `rag.index` file and does the
+   same exact Flat inner-product search with NumPy. A test and `build_index.py`
+   both check that it returns the same results as real FAISS. The function is
+   about 170 MB.
 2. **The index is built once, on your computer.** `build_index.py` embeds all
    1,342 chunks and saves the FAISS index into `backend/index/`. You commit it,
    and Vercel just loads it (milliseconds). Each question only embeds one sentence.
@@ -38,7 +42,7 @@ After that, requests are fast until it goes idle again.
   need a server Vercel's free plan cannot provide. Groq's free tier is fast and needs no card.
   Any OpenAI-compatible provider works by changing three settings.
 - **Retrieval is unchanged:** same chunker, same embedding model, same FAISS
-  index type, same prompt, same hybrid formula. So the scores should match the
+  index file (searched with NumPy on Vercel, same math), same prompt, same hybrid formula. So the scores should match the
   notebook (for example about 0.662 for "What is precision?").
 - **TF-IDF is written in NumPy**, because scikit-learn is too big for Vercel.
   A test checks it gives the same numbers as scikit-learn.
@@ -111,7 +115,8 @@ Frontend and backend share one URL, so no CORS setup is needed.
 ├── api/index.py          Vercel entry point (the backend function)
 ├── backend/
 │   ├── app.py            FastAPI endpoints
-│   ├── rag.py            corpus, chunks, FAISS, retrieval, hybrid, prompt
+│   ├── rag.py            corpus, chunks, index, retrieval, hybrid, prompt
+│   ├── flatindex.py      reads/writes the FAISS IndexFlatIP file, NumPy search
 │   ├── chunker.py        Step 1a recursive chunker (from the notebook)
 │   ├── embedder.py       MiniLM with ONNX Runtime + mean pooling
 │   ├── tfidf.py          TF-IDF in NumPy (matches scikit-learn)
@@ -121,7 +126,7 @@ Frontend and backend share one URL, so no CORS setup is needed.
 │   └── index/            ← created by build_index.py, commit it
 ├── src/                  React frontend (pages: Ask, Retrieval lab, Chunker, Pipeline)
 ├── build_index.py        build the index once
-├── tests/test_core.py    11 tests (no model download needed)
+├── tests/test_core.py    12 tests (no model download needed)
 ├── vercel.json           routes /api/* to the backend, the rest to React
 └── requirements.txt      backend packages for Vercel
 ```
@@ -164,5 +169,5 @@ To use DeepSeek directly instead: `LLM_BASE_URL=https://api.deepseek.com/v1`,
 
 ## Tests
 ```bash
-pytest -q        # 11 passed
+pytest -q        # 12 passed
 ```

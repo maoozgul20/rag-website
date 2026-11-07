@@ -1,5 +1,7 @@
-# Extra packages for running locally and for the tests (not needed on Vercel)
+# Extra packages for your computer: running locally, build_index.py, tests.
+# Not installed on Vercel.
 -r requirements.txt
+faiss-cpu>=1.8
 uvicorn>=0.30
 pytest>=8
 httpx>=0.27

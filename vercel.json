@@ -5,7 +5,8 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 60,
-      "includeFiles": "backend/**"
+      "includeFiles": "backend/**",
+      "excludeFiles": "{node_modules/**,dist/**,src/**,public/**,tests/**,.venv/**,backend/.cache/**,package-lock.json}"
     }
   },
   "rewrites": [

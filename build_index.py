@@ -35,6 +35,21 @@ def main():
     for h in p.retrieve("What is precision?", 3):
         print(f"  Rank {h['rank']} | score {h['score']:.3f} | {h['source']}")
 
+    # Prove the saved file is a real FAISS index and NumPy search matches FAISS
+    try:
+        import faiss
+        import numpy as np
+        from backend.flatindex import normalize_l2
+        real = faiss.read_index(str(config.INDEX_DIR / "rag.index"))
+        q = normalize_l2(embedder.embed(["What is precision?"]))
+        f_scores, f_ids = real.search(q, 5)
+        n_scores, n_ids = p.index.search(q, 5)
+        same = (f_ids == n_ids).all() and np.allclose(f_scores, n_scores, atol=1e-5)
+        print(f"\nFAISS check: faiss.read_index loaded {real.ntotal} vectors; "
+              f"same top-5 as the NumPy search: {bool(same)}")
+    except ImportError:
+        print("\n(faiss-cpu not installed, skipped the FAISS comparison)")
+
 
 if __name__ == "__main__":
     main()

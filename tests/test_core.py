@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from backend.app import create_app
 from backend.chunker import recursive_chunk
+from backend.flatindex import FlatIPIndex, normalize_l2
 from backend.llm import ApiLLM, LLMError
 from backend.rag import RAGPipeline, fake_embedder
 from backend.tfidf import TfidfIndex
@@ -68,6 +69,34 @@ def test_tfidf_matches_sklearn(tmp_path):
     mine.save(tmp_path / "t.npz")
     again = TfidfIndex.load(tmp_path / "t.npz")
     assert np.allclose(again.scores("precision recall"), mine.scores("precision recall"))
+
+
+# ---------- Step 3: NumPy flat index == FAISS IndexFlatIP ----------
+def test_flat_index_matches_faiss(tmp_path):
+    faiss = pytest.importorskip("faiss")
+    rng = np.random.RandomState(42)
+    x = normalize_l2(rng.randn(1342, 384).astype("float32"))
+    q = normalize_l2(rng.randn(4, 384).astype("float32"))
+
+    # FAISS writes the file, our class reads it (what happens on Vercel)
+    real = faiss.IndexFlatIP(384)
+    real.add(x)
+    faiss.write_index(real, str(tmp_path / "f.index"))
+    mine = FlatIPIndex.read(tmp_path / "f.index")
+    fs, fi = real.search(q, 10)
+    ms, mi = mine.search(q, 10)
+    assert (fi == mi).all() and np.allclose(fs, ms, atol=1e-5)
+
+    # Our class writes the file, FAISS reads it
+    mine.write(tmp_path / "m.index")
+    back = faiss.read_index(str(tmp_path / "m.index"))
+    assert back.ntotal == 1342 and (back.search(q, 10)[1] == fi).all()
+
+    # normalize_l2 behaves like faiss.normalize_L2
+    a = rng.randn(3, 384).astype("float32")
+    b = a.copy()
+    faiss.normalize_L2(a)
+    assert np.allclose(a, normalize_l2(b), atol=1e-6)
 
 
 # ---------- Steps 2-3: build, save, reload ----------
