@@ -31,7 +31,7 @@ const TABS = [
 ]
 
 function readTheme() {
-  try { return localStorage.getItem('theme') || 'dark' } catch { return 'dark' }
+  try { return localStorage.getItem('theme-v2') || 'light' } catch { return 'light' }
 }
 
 export default function App() {
@@ -42,7 +42,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-    try { localStorage.setItem('theme', theme) } catch { /* storage blocked */ }
+    try { localStorage.setItem('theme-v2', theme) } catch { /* storage blocked */ }
   }, [theme])
 
   useEffect(() => {
