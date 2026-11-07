@@ -77,7 +77,7 @@ export default function App() {
       <aside className="sidebar">
         <a className="brand" href="#" onClick={(e) => { e.preventDefault(); setTab('ask') }}>
           <span className="logo" aria-hidden="true">n</span>
-          <span className="brand-name">Course Notes</span>
+          <span className="brand-name">NoteGPT</span>
         </a>
 
         <button className="new-chat" onClick={newChat}>

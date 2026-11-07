@@ -1,4 +1,4 @@
-# Course Notes RAG — free Vercel version
+# NoteGPT — chat with your course notes (RAG, free Vercel version)
 
 The Week 8 Day 2 RAG notebook as a website: a **React frontend** and a
 **FastAPI backend**, both deployed together on **one free Vercel project**.

@@ -81,7 +81,7 @@ def create_app(pipeline_factory=None, llm=None):
                         raise HTTPException(503, f"Could not load the index: {e}")
         return state["pipeline"]
 
-    app = FastAPI(title="Course Notes RAG API", version="2.0")
+    app = FastAPI(title="NoteGPT API", version="2.0")
 
     @app.get("/api/health")
     def health():
