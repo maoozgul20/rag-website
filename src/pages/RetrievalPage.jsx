@@ -59,7 +59,7 @@ export default function RetrievalPage() {
       </div>
 
       {result && (
-        <div className="card">
+        <div className="card results">
           {result.found ? (
             <div className="found">
               {Object.entries(result.found).map(([f, ok]) => (
