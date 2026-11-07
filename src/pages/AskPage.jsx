@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api.js'
 import Controls from '../components/Controls.jsx'
 import HitList from '../components/HitList.jsx'
+import Markdown from '../components/Markdown.jsx'
 import { Search, Sparkle, Info } from '../components/Icons.jsx'
 
 const EXAMPLES = [
@@ -84,7 +85,7 @@ export default function AskPage({ health }) {
                 <h3><span className="tag accent">With your notes</span></h3>
                 <span className="muted small">{result.seconds.with_rag}s</span>
               </div>
-              <p className="answer-text">{result.answer_with_rag}</p>
+              <div className="answer-text"><Markdown>{result.answer_with_rag}</Markdown></div>
             </article>
             {result.answer_without_rag != null && (
               <article className="card answer plain">
@@ -92,7 +93,7 @@ export default function AskPage({ health }) {
                   <h3><span className="tag">Model only</span></h3>
                   <span className="muted small">{result.seconds.without_rag}s</span>
                 </div>
-                <p className="answer-text">{result.answer_without_rag}</p>
+                <div className="answer-text"><Markdown>{result.answer_without_rag}</Markdown></div>
               </article>
             )}
           </div>

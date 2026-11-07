@@ -152,7 +152,7 @@ Interactive docs when running locally: http://localhost:8000/docs
 | `LLM_API_KEY` | – | **Required** for the Ask page |
 | `LLM_BASE_URL` | `https://api.groq.com/openai/v1` | Any OpenAI-compatible API |
 | `LLM_MODEL` | `llama-3.1-8b-instant` | Model name at that provider |
-| `MAX_TOKENS` / `TEMPERATURE` | `300` / `0.2` | Same as the notebook |
+| `MAX_TOKENS` / `TEMPERATURE` | `800` / `0.2` | Room for formatted (Markdown) answers |
 | `LOW_SCORE_THRESHOLD` | `0.4` | Honest-test warning level |
 
 To use DeepSeek directly instead: `LLM_BASE_URL=https://api.deepseek.com/v1`,
